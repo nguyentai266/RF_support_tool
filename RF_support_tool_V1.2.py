@@ -58,13 +58,14 @@ class RFAnalyzerGUI:
         
         # Cấu hình màu sắc và độ cao hàng
         style.configure("Treeview", 
-                        rowheight=25, 
+                        rowheight=30, 
                         font=("Arial", 9),
                         background="white",
                         fieldbackground="white",
                         foreground="black",
-                        lightcolor="#000000", # Màu đường kẻ dọc
-                        bordercolor="#000000") # Màu viền
+                        lightcolor="#cccccc", # Màu đường kẻ dọc
+                        bordercolor="#cccccc",
+                        ) # Màu viền
         
         # Hiển thị vạch kẻ ô bằng cách thay đổi layout
         style.layout("Treeview", [
@@ -74,8 +75,10 @@ class RFAnalyzerGUI:
         # Cấu hình tiêu đề bảng có viền
         style.configure("Treeview.Heading", 
                         font=("Arial", 9, "bold"), 
-                        background="#eeeeee",
-                        relief="flat")
+                        background="#0ddff2",
+                        relief="flat",
+                        lighcolor="#cccccc",
+                        bordercolor="#cccccc")
         
         style.map("Treeview", 
                   background=[('selected', '#0078d7')], 
