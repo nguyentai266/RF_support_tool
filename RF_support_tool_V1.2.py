@@ -77,7 +77,7 @@ class RFAnalyzerGUI:
                         font=("Arial", 9, "bold"), 
                         background="#0ddff2",
                         relief="flat",
-                        lighcolor="#cccccc",
+                        lightcolor="#cccccc",
                         bordercolor="#cccccc")
         
         style.map("Treeview", 
