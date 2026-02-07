@@ -63,8 +63,8 @@ class RFAnalyzerGUI:
                         background="white",
                         fieldbackground="white",
                         foreground="black",
-                        lightcolor="#cccccc", # Màu đường kẻ dọc
-                        bordercolor="#cccccc") # Màu viền
+                        lightcolor="#000000", # Màu đường kẻ dọc
+                        bordercolor="#000000") # Màu viền
         
         # Hiển thị vạch kẻ ô bằng cách thay đổi layout
         style.layout("Treeview", [
