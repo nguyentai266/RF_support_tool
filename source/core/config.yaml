@@ -1,0 +1,115 @@
+version: V1.3
+ftp_host: 10.239.73.213
+ftp_user: Mars
+ftp_password: GGFTP@22
+ftp_remote: /.Enzo/4CS4/
+size: 1800x1000
+
+select_phase:
+  - spk_1_fr 
+  - spk_1_thd
+  - spk_1_rb
+  - spk_2_fr
+  - spk_2_thd
+  - spk_2_rb
+  - mic_1_fr
+  - mic_1_fr_norm
+  - mic_1_thd
+  - mic_1_seal_chirp
+  - mic_2_fr
+  - mic_2_fr_norm
+  - mic_2_thd
+  - mic_2_seal_chirp
+  - mic_3_fr
+  - mic_3_fr_norm
+  - mic_3_thd
+  - mic_3_seal_chirp
+  - hac_1_fr
+  - hac_1_thdn
+
+plot_config:
+  spk-1_fr:
+    min: 40
+    max: 120
+    step: 20
+  spk-1_thd:
+    min: 0
+    max: 120
+    step: 20
+  spk-1_rb:
+    min: 0
+    max: 5
+    step: 1
+  spk-2_fr:
+    min: 40
+    max: 120
+    step: 20
+  spk-2_thd:
+    min: 0
+    max: 120
+    step: 20
+  spk-2_rb:
+    min: 0
+    max: 2.5
+    step: 0.5
+  mic-1_fr:
+    min: -50
+    max: 0
+    step: 5
+  mic-1_fr_norm:
+    min: 0
+    max: 15
+    step: 5
+  mic-1_thd:
+    min: 0
+    max: 4
+    step: 0.5
+  mic-1_seal_chirp:
+    min: 0
+    max: 60
+    step: 10
+  mic-2_fr:
+    min: -60
+    max: 0
+    step: 10
+  mic-2_fr_norm:
+    min: -15
+    max: 10
+    step: 5
+  mic-2_thd:
+    min: 0
+    max: 4
+    step: 1
+  mic-2_seal_chirp:
+    min: 20
+    max: 60
+    step: 10
+  mic-3_fr:
+    min: -50
+    max: 0
+    step: 5
+  mic-3_fr_norm:
+    min: 0
+    max: 15
+    step: 5
+  mic-3_thd:
+    min: 0
+    max: 5
+    step: 1
+  mic-3_seal_chirp:
+    min: 30
+    max: 70
+    step: 10
+  hac-1_thdn:
+    min: 0
+    max: 100
+    step: 10
+  hac-1_fr:
+    min: -60
+    max: 10
+    step: 5
+
+
+
+
+  
