@@ -50,6 +50,7 @@ class RFAnalyzerGUI:
         self.dut_tree.bind('<Control-A>', lambda e: self._select_all(self.dut_tree))
         self.item_tree.bind('<Control-a>', lambda e: self._select_all(self.item_tree))
         self.item_tree.bind('<Control-A>', lambda e: self._select_all(self.item_tree))
+        self.item_tree.bind("<<TreeviewSelect>>", self._auto_fill_target)
         self.parser = ParserLog()
     def _select_all(self, tree):
         """Chọn tất cả các dòng trong bảng"""
@@ -183,6 +184,7 @@ class RFAnalyzerGUI:
             except ValueError: return None
             self.last_mode_msg = f"Single Mode (Dut: {selected_dut_ids[0]} | Target: {target})"
             val_col = pd.to_numeric(df_base[items[0]], errors='coerce')
+            
             final_mask = (val_col >= target - delta) & (val_col <= target + delta)
         
         # Logic Case 2: Nhiều Item (kể cả 1 DUT) HOẶC Nhiều DUT -> Dùng Mean Mode
@@ -237,6 +239,27 @@ class RFAnalyzerGUI:
             self.result_text.see(tk.END)
         else:
             self.result_text.insert(tk.END, " No items selected for filtering.\n")
+    def _auto_fill_target(self, event=None):
+        """Tự động điền giá trị Mean vào ô Target khi chọn 1 DUT và 1 Item"""
+        selected_duts = self.dut_tree.selection()
+        selected_items = self.item_tree.selection()
+
+        # Điều kiện: Chỉ chọn đúng 1 DUT và 1 Item
+        if len(selected_duts) == 1 and len(selected_items) == 1:
+            dut_id = self.dut_tree.item(selected_duts[0])['values'][0]
+            item_name = self.item_tree.item(selected_items[0])['values'][0]
+
+            if self.df_summary is not None:
+                # Lọc dữ liệu theo DUT đã chọn
+                df_dut = self.df_summary[self.df_summary['dut_id'] == dut_id]
+                
+                # Tính Mean của Item đó
+                val_col = pd.to_numeric(df_dut[item_name], errors='coerce').dropna()
+                
+                if not val_col.empty:
+                    mean_val = val_col.mean()
+                    # Điền giá trị vào ô Target (làm tròn 3 chữ số thập phân cho đẹp)
+                    self.target_str.set(f"{mean_val:.3f}")
 
     # --- CÁC HÀM TIỆN ÍCH (GIỮ NGUYÊN) ---
     def _execute_ftp_transfer(self, df, label):
