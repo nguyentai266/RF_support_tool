@@ -1,40 +1,24 @@
+import datetime
 import glob
 import os
 import re
-import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
-
-from core.load_config import load_yaml
-
-#from load_config import load_yaml
-
 
 
 class ParserLog(object):
 	def __init__(self):
 		super().__init__()
-		self.config=load_yaml()
-		self.select_phases=self.config["select_phase"]
+		
 
-	def load_limit(self,filepath,mode=""):
-		col_use=self.config["column_use"]
+	def load_limit(self,filepath):
+		col_use=["measurement","low_limit","high_limit"]
 		df=pd.read_csv(filepath,header=1,usecols=col_use)
-		if mode=="audio_sort" or mode == "audio_full" or mode =="":
-			sorted_df=df[df["phase"].isin(self.select_phases)].copy()
-			df_copy=sorted_df.drop(columns="phase").copy()
-			idx = df_copy.columns.get_loc("measurement")
-			phase = df_copy["measurement"].str.extract(r'^(.*?)(?=_[\d]+\.?\d*$)')
-			freq= df_copy['measurement'].str.extract(r'(\d+\.?\d*)$').astype(float) # lay ra tan so
-			df_copy.insert(idx+1,'phase',phase)
-			df_copy.insert(idx+2,"freq",freq)
-			final=df_copy.drop(columns="measurement")
-		elif mode == "rf":
-			final=df.copy()
-		return final
+		final=df.copy()
+		return final # type: ignore
 
-	def __load_data(self,filepath,mode):
+	def __load_data(self,filepath):
 		col_use=["phase","measurement","value"]
 		info_log=pd.read_csv(filepath,nrows=0).to_string() #lay dong dau tien cua log
 		info_dict={}
@@ -45,237 +29,111 @@ class ParserLog(object):
 			
 		if info_dict:
 			dut_id=info_dict.get("dut_id")
-			result=info_dict.get("result")
+			outcome=info_dict.get("result")
 			station_id=info_dict.get("station_id")
-			log_id=(re.search(r'(\d{10,15})\.csv$', filepath)).group(1)
+			#time=filepath.split('.')[0].split('_')[-1]
+			start_time = datetime.datetime.fromtimestamp(int(filepath.split('.')[0].split('_')[-1]) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+			slot=filepath.split('.')[0].split('_')[-2]
 
 			info_df=pd.DataFrame({
-				
-				"measurement":["dut_id","result","station_id","log_id","log_path"],
-				"value":[dut_id,result,station_id,(dut_id+"_"+log_id),filepath]
+				"measurement":["slot","dut_id","station_id","outcome","start_time","log_path"],
+				"value":[slot,dut_id,station_id,outcome,start_time,filepath]
 				})
 			df=pd.read_csv(filepath,header=1,usecols=col_use)
-			if mode == "" or mode == "audio_sort":
-				sort_df=df[df["phase"].isin(self.select_phases)].copy()
-				#sort_df['measurement']=sort_df["measurement"].str.extract(r'(\d+\.?\d*)$').astype(float)
-				sort_df=sort_df.drop(columns="phase")
-				df_combined=pd.concat([info_df,sort_df],ignore_index=True)
-				
-				df_transpose=df_combined.set_index("measurement").T
-			elif mode == "audio_full" or mode == "rf":
-				df_full=df.drop(columns="phase").copy()
-				#df_full=df.copy()
-				df_combined=pd.concat([info_df,df_full],ignore_index=True)
-				df_transpose=df_combined.set_index('measurement').T
-				
-			else:
-				return "error"
 			
-			return df_transpose
-
-	def __process_data(self,filepath,mode):
+			df_full=df.drop(columns="phase").copy()
+			#df_full=df.copy()
+			df_combined=pd.concat([info_df,df_full],ignore_index=True)
+			df_transpose=df_combined.set_index('measurement').T
+			
+			return df_transpose  #type: ignore
+ 
+	def __process_data(self,filepath):
 		try:
-			return self.__load_data(filepath,mode)
+			return self.__load_data(filepath)
 
 		except Exception as e:
 			print(f"Error: {e}")
 			return None
 
-	def summary_data(self,path_dir,mode=""):
+	def summary_data(self,path_dir):
 		list_file=glob.glob(os.path.join(path_dir,"*.csv"))
 		
-		if list_file: df_limit=self.load_limit(filepath=list_file[0],mode=mode)
+		if list_file: df_limit=self.load_limit(filepath=list_file[0])
 		with ThreadPoolExecutor(max_workers=8) as executor:
-			results = list(executor.map(lambda f:self.__process_data(f,mode), list_file))
+			results = list(executor.map(lambda f:self.__process_data(f), list_file))
 	
 		li = [df for df in results if df is not None]
 		if li: 
 			li_cleaned = [df.loc[:, ~df.columns.duplicated()].copy() for df in li]
 			df_summary = pd.concat(li_cleaned, axis=0, ignore_index=True)
 		else:  df_summary = pd.DataFrame()
-		return df_limit,df_summary		
-	
-	def copy_file_by_list(self,path_dir,list_file):
-		for file in list_file:
-			shutil.copy(file,path_dir)
-			
-	def update_log_files_by_col(self,summary_path,output_path):
-		try:
-			df_summary = pd.read_csv(summary_path,index_col=0)
-			os.makedirs(output_path,exist_ok=True)
-			
-		except Exception as e:
-			print(e)
-			
-		
-		
-		target_columns = [col for col in df_summary.columns if col.isdigit()]
-		for col in target_columns:
-			try:
-				
-				file_path = df_summary.loc['log_path', col]
-			except KeyError: continue
-
-			if not os.path.exists(file_path): 
-				
-				continue
-
-			with open(file_path, 'r', encoding='utf-8') as f:
-				info_file = f.readline().rstrip('\n')
-			file_name = os.path.basename(file_path)
-	        # đọc log
-			df_file = pd.read_csv(file_path, header=1)
-	        # Tạo dict map: {item_name: value}
-			value_map = df_summary[col].to_dict()
-	        # MAP measurement -> value mới
-			df_file['value'] = df_file['measurement'].map(value_map).fillna(df_file['value'])
-			outfile = os.path.join(output_path, file_name)
-			with open(outfile, 'w', encoding='utf-8', newline='') as f:
-	    		# ghi dòng info
-				f.write(info_file + '\n')
-	            # ghi dataframe (header + data)
-				df_file.to_csv(f, index=False)
-				print(f"Updated: {outfile}")
-
-	def update_log_files_by_row(self, summary_path, output_path):
-		try:
-			df_summary = pd.read_csv(summary_path)
-			os.makedirs(output_path, exist_ok=True)
-		except Exception as e:
-			print(f"Error: {e}")
-
-		for _, row in df_summary.iterrows():
-
-			file_path = row["log_path"]
-
-			if not os.path.exists(file_path):
-				print(f"Missing: {file_path}")
-				continue
-
-			# Đọc dòng info đầu
-			with open(file_path, "r", encoding="utf-8") as f:
-				info_file = f.readline().rstrip("\n")
-
-			# Đọc nội dung log
-			df_file = pd.read_csv(file_path, header=1)
-
-			# Tạo map: measurement -> value
-			value_map = row.to_dict()
-
-			# Update theo measurement
-			df_file["value"] = (
-				df_file["measurement"]
-				.map(value_map)
-				.fillna(df_file["value"])
-			)
-
-			# Ghi file mới
-			outfile = os.path.join(output_path, os.path.basename(file_path))
-
-			with open(outfile, "w", encoding="utf-8", newline="") as f:
-				f.write(info_file + "\n")
-				df_file.to_csv(f, index=False)
-
-			print(f"Updated: {outfile}")
-			
-	def df_phase_freq(self,dataframe):
-		if "measurement" in dataframe.columns:
-			idx = dataframe.columns.get_loc("measurement")
-			phase_data = dataframe["measurement"].str.extract(r'^(.*?)(?=_[\d]+\.?\d*$)')[0]
-			freq_data = dataframe["measurement"].str.extract(r'(\d+\.?\d*)$')[0].astype(float)
-			dataframe.insert(idx + 1,"phase",phase_data)
-			dataframe.insert(idx + 2,"freq",freq_data)
-			dataframe["phase"] = phase_data.fillna(dataframe["measurement"])
-			
-		df_copy=dataframe.drop(columns=["measurement"]).copy()
-		#df_copy.to_csv("sdfasdf.csv",index=True)
-		return df_copy
+		return df_limit,df_summary		#type: ignore
 	
 
-	@staticmethod
-	def filter_by_dut_station(dataFrame,phase_key,station_id="",dut_id=""):
-		raw_df=dataFrame[dataFrame["phase"]==phase_key].copy()
-		raw_df=raw_df[raw_df["phase"].isin(["dut_id","station_id",phase_key])]
-		raw_df_T=raw_df.T
-		df_by_dut=raw_df_T[raw_df_T["phase"]==dut_id]
-		return df_by_dut
 	
 	def group_data(self,dataFrame,groupBy):
 		if groupBy == "dut_id":
 			groups = [(key, g) for key, g in dataFrame.groupby(groupBy)]
-
-			
 		elif groupBy == "station_id":
 			groups = [(key, g) for key, g in dataFrame.groupby(groupBy)]
 		else:
-			return
-		return groups
-
-
-	
-	
-	
-
-	
-
-
-
-			
+			groups = [(key, g) for key, g in dataFrame.groupby(["station_id","dut_id"])]
 		
+		return groups
+	
+	def grr_summary(self, limit, summary):
+		df_final = pd.DataFrame()
+		
+		if not summary.empty and not limit.empty:
+
+			if any('measurement' in str(idx).lower() for idx in limit.index):
+				limit = limit.T
+				
+			meas_col = [col for col in limit.columns if 'measurement' in str(col).lower()][0]
+			low_col = [col for col in limit.columns if 'low' in str(col).lower() or 'min' in str(col).lower()][0]
+			high_col = [col for col in limit.columns if 'high' in str(col).lower() or 'max' in str(col).lower()][0]
 			
-	
-	
+			low_row_dict = {col: "" for col in summary.columns}
+			high_row_dict = {col: "" for col in summary.columns}
+			
+			id_column = 'dut_id' if 'dut_id' in summary.columns else summary.columns[0]
+			low_row_dict[id_column] = ""
+			high_row_dict[id_column] = ""
+			
+			def keep_only_numeric(val):
+				if pd.isna(val): return ""
+				val_str = str(val).strip()
+				try:
+					float(val_str)
+					return val
+				except ValueError:
+					return ""
+			
+			for _, row in limit.iterrows():
+				item_name = str(row[meas_col]).strip()
+				if item_name in summary.columns:
+					low_row_dict[item_name] = keep_only_numeric(row[low_col])
+					high_row_dict[item_name] = keep_only_numeric(row[high_col])
+					
+			
+			df_limits_rows = pd.DataFrame([high_row_dict,low_row_dict], columns=summary.columns)
+			df_final = pd.concat([df_limits_rows, summary], axis=0, ignore_index=True)
+
+		else:
+			df_final = summary.copy()
+			
+		return df_final
+
 
 
 if __name__=="__main__":\
 	
-	#file="C:/Users/V1531673/Desktop/RFMS/Audio Basic/data_source/MT5_FVN-E1F3-G01_FATP-AUDIO_BJ25A-01_56100DLCQ00016_GRR_PASS_0-0_1766543317781.csv"
-	parser=ParserLog()
-
-	#limit=parser.load_limit(filepath=file)
-	#pd.DataFrame.to_csv(limit,"limit.csv")
-	'''
-	app_path=os.getcwd()
-	log_dir=os.path.join(app_path,"data/")
-	mode="full"
-	df_limit,df_summary=parser.summary_data(log_dir,mode=mode)
-
-	df_summary_transpose=df_summary.T
-	df_limit.to_csv("limit.csv",index=False	)
-	df_summary_transpose.to_csv("summary.csv",index=True)'''
-	#parser.update_log_files("summary.csv","log")
-	path="C:/Users/nguye/Desktop/AudioForBeginner/sum.csv"
-	dataFrame=pd.read_csv(path)
-	phase='mic-1_fr'
-	sort=dataFrame.filter(regex=rf"^({re.escape(phase)}_\d+(\.\d+)?|station_id)$").copy()
-	groups=parser.group_data(sort,'mic-1_fr','station_id')
-	for dut,group in groups:
-		group.to_csv(f"C:/Users/nguye/Desktop/AudioForBeginner/dut/{dut}.csv")
-	print("ok")
+	parser = ParserLog()
+	limit,summary = parser.summary_data("C:/Users/V1531673/Desktop/CELL-04/GRR")
 	
-	
-
-
-	#df=parser.df_phase_freq(data,select_phase=['dut_id','station_id',"spk-1_rb"])
-	##df.to_csv("test.csv",index=False)
-	
-
+	data = parser.grr_summary(limit=limit,summary=summary)
+	data.to_csv("grr.csv",index=False)
 
 	
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-		
-
-
