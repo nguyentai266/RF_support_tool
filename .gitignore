@@ -1,4 +1,4 @@
 build_linux/
 build_win/
 *.exe
-*/Log
+*/Log/
