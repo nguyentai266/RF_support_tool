@@ -844,6 +844,12 @@ if __name__ == "__main__":
         messagebox.showwarning("Notify", "App is opened!")
         root_warning.destroy()
         sys.exit(0)
+    
 
     log.info('Start Application')
-    root = tk.Tk(); app = RFAnalyzerGUI(root); root.mainloop()
+    root = tk.Tk()
+    icon_path = "icon.ico"
+    if os.path.exists(icon_path):
+        root.iconbitmap(icon_path) 
+    app = RFAnalyzerGUI(root) 
+    root.mainloop()
